@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nadhrah's Frictionless Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+
+        /* Custom Checkbox */
+        .frictionless-checkbox {
+            appearance: none;
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 2px solid #cbd5e1;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+            margin-top: 0.125rem;
+        }
+        .frictionless-checkbox:hover {
+            border-color: #94a3b8;
+        }
+        .frictionless-checkbox:checked {
+            background-color: #10b981;
+            border-color: #10b981;
+        }
+        .frictionless-checkbox:checked::after {
+            content: '';
+            position: absolute;
+            left: 0.35rem;
+            top: 0.1rem;
+            width: 0.35rem;
+            height: 0.7rem;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+
+        /* Task text strikethrough animation */
+        .task-text {
+            transition: color 0.2s, text-decoration-color 0.2s;
+            text-decoration-color: transparent;
+        }
+        .task-item.done .task-text {
+            color: #94a3b8;
+            text-decoration: line-through;
+            text-decoration-color: #94a3b8;
+        }
+
+        /* Tooltip styling for topic dots */
+        .dot-group .tooltip {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            transform: translateY(5px);
+        }
+        .dot-group:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Smooth transitions for tabs */
+        .tab-btn {
+            transition: all 0.2s ease;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen">
+
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        
+        <!-- Header -->
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-slate-800 tracking-tight">Good morning, Nadhrah.</h1>
+            <p class="text-slate-500 mt-1 font-medium">Tuesday, September 29, 2026</p>
+        </header>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10" id="stats-container">
+            <!-- Populated via JS -->
+        </div>
+
+        <!-- Tabs -->
+        <div class="mb-8 flex space-x-1 bg-slate-200/60 p-1 rounded-xl w-max">
+            <button class="tab-btn active px-5 py-2 rounded-lg text-sm font-semibold bg-white shadow-sm text-slate-800" data-tab="today">
+                Today's Tasks
+            </button>
+            <button class="tab-btn px-5 py-2 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-800 hover:bg-white/50" data-tab="catchup">
+                Catch Up
+            </button>
+            <button class="tab-btn px-5 py-2 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-800 hover:bg-white/50" data-tab="ahead">
+                Study Ahead
+            </button>
+        </div>
+
+        <!-- Subjects Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="subjects-container">
+            <!-- Cards populated via JS -->
+        </div>
+
+    </main>
+
+    <script>
+        // --- 1. State Management ---
+        const state = {
+            activeTab: 'today',
+            // Color palettes structured for Tailwind dynamic rendering
+            colors: {
+                blue: { bg: 'bg-blue-50', text: 'text-blue-600', fill: 'bg-blue-500', barBg: 'bg-blue-100', dotDone: 'bg-blue-500', dotCurr: 'bg-blue-300', dotUp: 'bg-blue-100' },
+                purple: { bg: 'bg-purple-50', text: 'text-purple-600', fill: 'bg-purple-500', barBg: 'bg-purple-100', dotDone: 'bg-purple-500', dotCurr: 'bg-purple-300', dotUp: 'bg-purple-100' },
+                red: { bg: 'bg-red-50', text: 'text-red-600', fill: 'bg-red-500', barBg: 'bg-red-100', dotDone: 'bg-red-500', dotCurr: 'bg-red-300', dotUp: 'bg-red-100' },
+                green: { bg: 'bg-emerald-50', text: 'text-emerald-600', fill: 'bg-emerald-500', barBg: 'bg-emerald-100', dotDone: 'bg-emerald-500', dotCurr: 'bg-emerald-300', dotUp: 'bg-emerald-100' },
+                orange: { bg: 'bg-orange-50', text: 'text-orange-600', fill: 'bg-orange-500', barBg: 'bg-orange-100', dotDone: 'bg-orange-500', dotCurr: 'bg-orange-300', dotUp: 'bg-orange-100' }
+            },
+            subjects: [
+                {
+                    id: 'maths', name: 'Mathematics', colorId: 'blue',
+                    teacher: 'Mr. Anderson', nextExam: 'Oct 15', progress: 68,
+                    topics: [
+                        { name: 'Algebra', status: 'done' }, { name: 'Calculus', status: 'done' },
+                        { name: 'Vectors', status: 'done' }, { name: 'Statistics', status: 'current' },
+                        { name: 'Probability', status: 'upcoming' }, { name: 'Mechanics', status: 'upcoming' }
+                    ],
+                    tasks: {
+                        today: [
+                            { id: 'm_t1', text: 'Complete Statistics Worksheet 4', done: false },
+                            { id: 'm_t2', text: 'Review past paper 2024', done: true }
+                        ],
+                        catchup: [
+                            { id: 'm_c1', text: 'Finish late Vector assignment', done: false }
+                        ],
+                        ahead: [
+                            { id: 'm_a1', text: 'Read Introduction to Probability', done: false }
+                        ]
+                    }
+                },
+                {
+                    id: 'physics', name: 'Physics', colorId: 'purple',
+                    teacher: 'Dr. Sterling', nextExam: 'Oct 22', progress: 55,
+                    topics: [
+                        { name: 'Kinematics', status: 'done' }, { name: 'Dynamics', status: 'done' },
+                        { name: 'Waves', status: 'current' }, { name: 'Optics', status: 'upcoming' },
+                        { name: 'Quantum', status: 'upcoming' }
+                    ],
+                    tasks: {
+                        today: [
+                            { id: 'p_t1', text: 'Wave equation derivation', done: false }
+                        ],
+                        catchup: [
+                            { id: 'p_c1', text: 'Submit lab report 3', done: true },
+                            { id: 'p_c2', text: 'Re-watch Dynamics lecture', done: false }
+                        ],
+                        ahead: [
+                            { id: 'p_a1', text: 'Skim Chapter 7 on Optics', done: false }
+                        ]
+                    }
+                },
+                {
+                    id: 'english', name: 'English Lit', colorId: 'red',
+                    teacher: 'Ms. Bennet', nextExam: 'Nov 02', progress: 80,
+                    topics: [
+                        { name: 'Poetry Analysis', status: 'done' }, { name: 'Shakespeare', status: 'done' },
+                        { name: 'Gothic Fiction', status: 'done' }, { name: 'Modernism', status: 'current' }
+                    ],
+                    tasks: {
+                        today: [
+                            { id: 'e_t1', text: 'Draft Modernism essay intro', done: false },
+                            { id: 'e_t2', text: 'Annotate T.S. Eliot poem', done: false }
+                        ],
+                        catchup: [],
+                        ahead: [
+                            { id: 'e_a1', text: 'Research Post-modern context', done: false }
+                        ]
+                    }
+                },
+                {
+                    id: 'chem', name: 'Chemistry', colorId: 'green',
+                    teacher: 'Mr. White', nextExam: 'Oct 18', progress: 40,
+                    topics: [
+                        { name: 'Atomic Struct', status: 'done' }, { name: 'Bonding', status: 'done' },
+                        { name: 'Stoichiometry', status: 'current' }, { name: 'Acids & Bases', status: 'upcoming' },
+                        { name: 'Organic', status: 'upcoming' }, { name: 'Redox', status: 'upcoming' }
+                    ],
+                    tasks: {
+                        today: [
+                            { id: 'c_t1', text: 'Stoichiometry practice Qs 1-10', done: true }
+                        ],
+                        catchup: [
+                            { id: 'c_c1', text: 'Revise bonding structures', done: false }
+                        ],
+                        ahead: [
+                            { id: 'c_a1', text: 'Learn pH calculations formulas', done: false },
+                            { id: 'c_a2', text: 'Read Acid/Base intro', done: false }
+                        ]
+                    }
+                },
+                {
+                    id: 'history', name: 'History', colorId: 'orange',
+                    teacher: 'Mrs. Hughes', nextExam: 'Nov 10', progress: 75,
+                    topics: [
+                        { name: 'WWI', status: 'done' }, { name: 'Interwar Period', status: 'done' },
+                        { name: 'WWII', status: 'done' }, { name: 'Cold War', status: 'current' },
+                        { name: 'Civil Rights', status: 'upcoming' }
+                    ],
+                    tasks: {
+                        today: [
+                            { id: 'h_t1', text: 'Read source material on Cuban Missile', done: false }
+                        ],
+                        catchup: [
+                            { id: 'h_c1', text: 'Complete timeline chart', done: false }
+                        ],
+                        ahead: []
+                    }
+                }
+            ]
+        };
+
+        // --- 2. Helper Functions ---
+        
+        function calculateStats() {
+            let totalToday = 0;
+            let doneToday = 0;
+            let catchupCount = 0;
+            let avgProgress = 0;
+
+            state.subjects.forEach(sub => {
+                // Today's tasks
+                totalToday += sub.tasks.today.length;
+                doneToday += sub.tasks.today.filter(t => t.done).length;
+                
+                // Catchup items (only unresolved ones count as active catchup issues)
+                catchupCount += sub.tasks.catchup.filter(t => !t.done).length;
+                
+                // Progress
+                avgProgress += sub.progress;
+            });
+
+            avgProgress = Math.round(avgProgress / state.subjects.length);
+
+            return { totalToday, doneToday, catchupCount, avgProgress };
+        }
+
+        function renderStats() {
+            const stats = calculateStats();
+            const container = document.getElementById('stats-container');
+            
+            container.innerHTML = `
+                <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-slate-400 mb-1">Tasks Done (Today)</p>
+                        <p class="text-2xl font-bold text-slate-800">${stats.doneToday} <span class="text-slate-300 text-lg">/ ${stats.totalToday}</span></p>
+                    </div>
+                    <div class="h-10 w-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500">
+                        <i class="fas fa-check-double"></i>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-slate-400 mb-1">Syllabus Progress</p>
+                        <p class="text-2xl font-bold text-slate-800">${stats.avgProgress}%</p>
+                    </div>
+                    <div class="h-10 w-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-slate-400 mb-1">Catch-up Items</p>
+                        <p class="text-2xl font-bold text-slate-800">${stats.catchupCount}</p>
+                    </div>
+                    <div class="h-10 w-10 rounded-full bg-orange-50 flex items-center justify-center text-orange-500">
+                        <i class="fas fa-life-ring"></i>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-slate-400 mb-1">Subjects</p>
+                        <p class="text-2xl font-bold text-slate-800">${state.subjects.length}</p>
+                    </div>
+                    <div class="h-10 w-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-500">
+                        <i class="fas fa-book-open"></i>
+                    </div>
+                </div>
+            `;
+        }
+
+        function generateDotsHtml(topics, colors) {
+            let html = '<div class="flex space-x-1.5">';
+            topics.forEach(topic => {
+                let colorClass = colors.dotUp; // default upcoming
+                if (topic.status === 'done') colorClass = colors.dotDone;
+                if (topic.status === 'current') colorClass = colors.dotCurr + ' animate-pulse';
+
+                html += `
+                    <div class="dot-group relative">
+                        <div class="w-3 h-3 rounded-full ${colorClass} cursor-pointer"></div>
+                        <div class="tooltip absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-800 text-white text-xs rounded whitespace-nowrap z-10 pointer-events-none">
+                            ${topic.name}
+                            <!-- small arrow -->
+                            <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            return html;
+        }
+
+        function generateTasksHtml(subjectId, tasks) {
+            if (!tasks || tasks.length === 0) {
+                return `<p class="text-sm text-slate-400 italic py-2">Nothing scheduled here.</p>`;
+            }
+
+            let html = '<div class="space-y-3 mt-4">';
+            tasks.forEach(task => {
+                const checked = task.done ? 'checked' : '';
+                const doneClass = task.done ? 'done' : '';
+                html += `
+                    <label class="task-item flex items-start gap-3 cursor-pointer group ${doneClass}">
+                        <input type="checkbox" 
+                               class="frictionless-checkbox" 
+                               ${checked}
+                               onchange="toggleTask('${subjectId}', '${task.id}', this.checked)">
+                        <span class="task-text text-sm font-medium mt-[0.1rem] text-slate-700">${task.text}</span>
+                    </label>
+                `;
+            });
+            html += '</div>';
+            return html;
+        }
+
+        function renderSubjects() {
+            const container = document.getElementById('subjects-container');
+            container.innerHTML = '';
+
+            state.subjects.forEach(subject => {
+                const colors = state.colors[subject.colorId];
+                const activeTasks = subject.tasks[state.activeTab];
+
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col hover:shadow-md transition-shadow duration-200';
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl ${colors.bg} ${colors.text} flex items-center justify-center text-lg font-bold">
+                                ${subject.name.charAt(0)}
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-slate-800 leading-tight">${subject.name}</h3>
+                                <p class="text-xs font-medium text-slate-500 mt-0.5"><i class="fas fa-chalkboard-teacher mr-1"></i> ${subject.teacher}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="inline-block px-2.5 py-1 bg-slate-100 text-slate-600 rounded-md text-xs font-bold whitespace-nowrap">
+                                Exam: ${subject.nextExam}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="mb-5">
+                        <div class="flex justify-between items-end mb-2">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Syllabus</span>
+                            <span class="text-xs font-bold text-slate-600">${subject.progress}%</span>
+                        </div>
+                        <div class="h-2 w-full ${colors.barBg} rounded-full overflow-hidden mb-3">
+                            <div class="h-full ${colors.fill} rounded-full" style="width: ${subject.progress}%"></div>
+                        </div>
+                        
+                        <!-- Topic Dot Map -->
+                        ${generateDotsHtml(subject.topics, colors)}
+                    </div>
+
+                    <div class="border-t border-slate-100 pt-4 flex-1">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                            ${state.activeTab === 'today' ? 'Today\'s Homework' : state.activeTab === 'catchup' ? 'Overdue & Revisions' : 'Upcoming Readings'}
+                        </h4>
+                        ${generateTasksHtml(subject.id, activeTasks)}
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        // --- 3. Actions & Events ---
+        
+        // Expose globally for inline HTML handlers
+        window.toggleTask = function(subjectId, taskId, isDone) {
+            // Find and update the task state
+            const subject = state.subjects.find(s => s.id === subjectId);
+            if(subject) {
+                const task = subject.tasks[state.activeTab].find(t => t.id === taskId);
+                if(task) {
+                    task.done = isDone;
+                    // Re-render purely the stats and subject visuals based on new state
+                    renderStats();
+                    
+                    // We don't need a full re-render of subjects because CSS handles the strikethrough visually via the checkbox checked state.
+                    // However, to maintain pure state alignment, we locate the specific label element and toggle a class.
+                    const checkbox = document.querySelector(`input[onchange="toggleTask('${subjectId}', '${taskId}', this.checked)"]`);
+                    if(checkbox) {
+                        const label = checkbox.closest('label');
+                        if(isDone) label.classList.add('done');
+                        else label.classList.remove('done');
+                    }
+                }
+            }
+        };
+
+        function setupTabs() {
+            const tabs = document.querySelectorAll('.tab-btn');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', (e) => {
+                    // Update UI state for tabs
+                    tabs.forEach(t => {
+                        t.classList.remove('active', 'bg-white', 'shadow-sm', 'text-slate-800');
+                        t.classList.add('text-slate-500');
+                    });
+                    
+                    const clicked = e.currentTarget;
+                    clicked.classList.remove('text-slate-500');
+                    clicked.classList.add('active', 'bg-white', 'shadow-sm', 'text-slate-800');
+
+                    // Update underlying data state
+                    state.activeTab = clicked.dataset.tab;
+                    
+                    // Re-render content below
+                    renderSubjects();
+                });
+            });
+        }
+
+        function init() {
+            renderStats();
+            setupTabs();
+            renderSubjects();
+        }
+
+        // Run on load
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
